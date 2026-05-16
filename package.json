@@ -1,0 +1,98 @@
+{
+  "name": "@yudin-s/vue-chrome-ai",
+  "version": "0.1.0",
+  "description": "Vue 3 composables and plugin for Gemini Nano, Chrome Built-in AI, LanguageModel Prompt API, and browser-side LLM task APIs.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Serge Yudin",
+  "homepage": "https://yudin-s.github.io/vue-chrome-ai/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yudin-s/vue-chrome-ai.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yudin-s/vue-chrome-ai/issues"
+  },
+  "keywords": [
+    "vue",
+    "vue3",
+    "vue-plugin",
+    "vue-composables",
+    "composables",
+    "composition-api",
+    "chrome",
+    "chrome-ai",
+    "chrome-ai-vue",
+    "built-in-ai",
+    "browser-ai",
+    "gemini-nano",
+    "gemini-nano-vue",
+    "vue-gemini-nano",
+    "prompt-api",
+    "prompt-api-vue",
+    "language-model",
+    "language-model-api",
+    "on-device-ai",
+    "browser-llm",
+    "local-ai",
+    "local-llm",
+    "typescript",
+    "summarizer",
+    "translator",
+    "language-detector",
+    "writer",
+    "rewriter",
+    "proofreader"
+  ],
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "docs",
+    "examples/*.vue",
+    "AGENTS.md",
+    "llms.txt",
+    "README.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "LICENSE"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsup",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "audit:moderate": "npm audit --audit-level=moderate",
+    "prepack": "npm run build",
+    "pack:dry": "npm --cache ./.npm-cache pack --dry-run",
+    "publish:check": "npm run check && npm test && npm run build && npm run audit:moderate && npm run pack:dry",
+    "prepublishOnly": "npm run publish:check"
+  },
+  "peerDependencies": {
+    "vue": "^3.3.0 || >=3.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.130",
+    "jsdom": "^24.1.3",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4",
+    "vue": "^3.5.0"
+  },
+  "engines": {
+    "node": ">=18.18"
+  },
+  "packageManager": "npm@10.8.2"
+}

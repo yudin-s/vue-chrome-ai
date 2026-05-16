@@ -1,0 +1,27 @@
+# @yudin-s/vue-chrome-ai
+
+Vue 3 composables and plugin for Chrome Built-in AI / Gemini Nano. The package provides reactive wrappers for the browser-native LanguageModel Prompt API and task APIs.
+
+Install:
+
+```bash
+npm install @yudin-s/vue-chrome-ai
+```
+
+Main imports:
+
+```ts
+import {
+  VueChromeAI,
+  useChromeAIAvailability,
+  useChromeAISession,
+  useChromeAIPrompt,
+  useChromeAIStream,
+  useChromeAISummarizer,
+  useChromeAITranslator,
+} from "@yudin-s/vue-chrome-ai";
+```
+
+Use `VueChromeAI` as a Vue plugin to provide default `createOptions`, `autoCheck`, and `autoCreate`. Use composables directly inside `setup()`, `<script setup>`, or Vue effect scopes. Returned state is exposed as refs/computed refs.
+
+The package does not bundle Gemini Nano, does not call Google cloud APIs, and does not polyfill unsupported browsers.
