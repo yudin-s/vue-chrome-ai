@@ -5,9 +5,11 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-ready-3178c6.svg)](https://www.typescriptlang.org/)
 
-Vue 3 composables and plugin for Gemini Nano, Chrome Built-in AI, and the `LanguageModel` Prompt API.
+Vue 3 composables and a plugin for Chrome's browser-side `LanguageModel` API.
 
-Use `@yudin-s/vue-chrome-ai` when a Vue app needs reactive state for browser-side LLM support, model availability, download progress, session lifecycle, prompt/streaming calls, structured output, optional reflection, and Chrome AI task APIs such as Summarizer, Translator, Language Detector, Writer, Rewriter, and Proofreader.
+Use `@yudin-s/vue-chrome-ai` when a Vue app needs to check browser support, prepare a local model, stream prompt output, and clean up sessions without wiring the low-level API by hand.
+
+The package keeps the browser API visible, but adds Vue state for feature detection, availability, download progress, session lifecycle, prompt calls, streaming, structured output, and the current task APIs such as Summarizer, Translator, Language Detector, Writer, Rewriter, and Proofreader.
 
 > Chrome Built-in AI is browser-owned and still evolving. This package does not bundle a model, does not call Google APIs, and does not polyfill unsupported browsers.
 
@@ -47,7 +49,7 @@ The plugin uses Vue provide/inject to share defaults. Every composable can still
 import { computed, ref } from "vue";
 import { useChromeAIPrompt } from "@yudin-s/vue-chrome-ai";
 
-const input = ref("Summarize what Chrome Built-in AI is.");
+const input = ref("Summarize this paragraph in two sentences.");
 const ai = useChromeAIPrompt({
   createOptions: {
     initialPrompts: [
@@ -81,11 +83,10 @@ More examples:
 - [Basic prompt SFC](examples/basic-prompt.vue)
 - [Composable docs](docs/composables.md)
 - [Publishing checklist](docs/publishing.md)
-- [AI agent guide](AGENTS.md)
 
 ## API Coverage
 
-Prompt / LLM layer:
+Prompt / session layer:
 
 - `LanguageModel.availability()`, `params()`, and `create()`
 - `create({ monitor })` download progress
