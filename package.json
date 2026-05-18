@@ -1,6 +1,6 @@
 {
   "name": "@yudin-s/vue-chrome-ai",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Vue composables for Chrome's browser-side LanguageModel API.",
   "type": "module",
   "license": "MIT",
