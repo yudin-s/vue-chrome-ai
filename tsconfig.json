@@ -16,5 +16,5 @@
     "outDir": "dist"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "vitest.config.ts", "docs/**/*.ts", "examples/**/*.ts", "examples/**/*.vue"],
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["dist", "node_modules", "examples/chrome-ai-studio"]
 }

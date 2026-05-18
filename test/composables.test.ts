@@ -1,12 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
-import { effectScope } from "vue";
+import { computed, effectScope, nextTick, ref } from "vue";
 import {
   useChromeAIAvailability,
   useChromeAIPrompt,
   useChromeAIParams,
   useChromeAISession,
+  useChromeAIStream,
 } from "../src/composables";
-import type { ChromeAIRuntime, ChromeAIParams, ChromeAICreateOptions } from "../src/types";
+import type {
+  ChromeAICreateOptions,
+  ChromeAILanguageModelSession,
+  ChromeAIParams,
+  ChromeAIRuntime,
+} from "../src/types";
 
 function withRuntime<T>(runtime: ChromeAIRuntime, callback: () => Promise<T> | T): Promise<T> {
   const previousLanguageModel = (globalThis as { LanguageModel?: unknown }).LanguageModel;
@@ -50,6 +56,53 @@ describe("Vue composables smoke", () => {
       expect(hooks.status.value).toBe("ready");
       expect(hooks.availability.value).toBe("downloadable");
       expect(hooks.supported.value).toBe(true);
+
+      scope.stop();
+    });
+  });
+
+  it("refreshes availability when reactive options change", async () => {
+    const language = ref("en");
+    const availability = vi.fn(async () => "available" as const);
+    const runtime: ChromeAIRuntime = {
+      LanguageModel: {
+        availability,
+        create: vi.fn(),
+      },
+    };
+
+    await withRuntime(runtime, async () => {
+      const scope = effectScope();
+      const hooks = scope.run(() =>
+        useChromeAIAvailability({
+          options: computed(() => ({
+            expectedInputs: [{ type: "text", languages: [language.value] }],
+            expectedOutputs: [{ type: "text", languages: [language.value] }],
+          })),
+        })
+      );
+      if (!hooks) {
+        throw new Error("hook result missing");
+      }
+
+      await nextTick();
+      await Promise.resolve();
+      expect(availability).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          expectedInputs: [{ type: "text", languages: ["en"] }],
+          expectedOutputs: [{ type: "text", languages: ["en"] }],
+        })
+      );
+
+      language.value = "ja";
+      await nextTick();
+      await Promise.resolve();
+      expect(availability).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          expectedInputs: [{ type: "text", languages: ["ja"] }],
+          expectedOutputs: [{ type: "text", languages: ["ja"] }],
+        })
+      );
 
       scope.stop();
     });
@@ -118,6 +171,59 @@ describe("Vue composables smoke", () => {
     });
   });
 
+  it("uses latest reactive create options when creating a session", async () => {
+    const language = ref("en");
+    const availability = vi.fn(async () => "available" as const);
+    const createSession = vi.fn(async (_create: ChromeAICreateOptions = {}) => ({
+      prompt: vi.fn(async () => "ok"),
+      promptStreaming: vi.fn(),
+      destroy: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    const runtime: ChromeAIRuntime = {
+      LanguageModel: {
+        availability,
+        create: createSession,
+      },
+    };
+
+    await withRuntime(runtime, async () => {
+      const scope = effectScope();
+      const sessionHook = scope.run(() =>
+        useChromeAISession({
+          autoCreate: false,
+          createOptions: computed(() => ({
+            expectedInputs: [{ type: "text", languages: [language.value] }],
+            expectedOutputs: [{ type: "text", languages: [language.value] }],
+          })),
+        })
+      );
+      if (!sessionHook) {
+        throw new Error("session hook missing");
+      }
+
+      language.value = "ja";
+      await sessionHook.createSession();
+
+      expect(availability).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          expectedInputs: [{ type: "text", languages: ["ja"] }],
+          expectedOutputs: [{ type: "text", languages: ["ja"] }],
+        })
+      );
+      expect(createSession).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          expectedInputs: [{ type: "text", languages: ["ja"] }],
+          expectedOutputs: [{ type: "text", languages: ["ja"] }],
+        })
+      );
+      scope.stop();
+    });
+  });
+
   it("supports non-stream prompt and returns text", async () => {
     const runtime: ChromeAIRuntime = {
       LanguageModel: {
@@ -146,5 +252,19 @@ describe("Vue composables smoke", () => {
       expect(promptHook.status.value).toBe("ready");
       scope.stop();
     });
+  });
+
+  it("sets stream error state when called before a session is ready", async () => {
+    const scope = effectScope();
+    const session = ref<ChromeAILanguageModelSession | null>(null);
+    const stream = scope.run(() => useChromeAIStream(session));
+    if (!stream) {
+      throw new Error("stream hook missing");
+    }
+
+    await expect(stream.streamPrompt("hello")).rejects.toThrow("Chrome AI session is not ready.");
+    expect(stream.status.value).toBe("error");
+    expect(stream.error.value).toBeInstanceOf(Error);
+    scope.stop();
   });
 });

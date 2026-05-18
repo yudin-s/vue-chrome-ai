@@ -2,6 +2,8 @@
 
 All composables return reactive references (`ref`/`computed`) suitable for Vue 3 templates and composition-style usage.
 
+Most option fields accept plain values, `ref`, `computed`, or getter functions. This is useful when language, modality, model settings, or task options are selected from reactive UI state.
+
 ## Injection + Plugin
 
 - `VueChromeAI` — plugin object with `install(app, options?)`
@@ -15,6 +17,8 @@ Plugin options:
 - `autoCreate?: boolean`
 
 `createOptions` is used as the default for session/task hooks that create browser sessions.
+
+Composable-local options override plugin defaults.
 
 ## Composables
 
@@ -35,6 +39,21 @@ Returns:
 - `userActivation: Readonly<ComputedRef<boolean | undefined>>`
 - `error: Readonly<ComputedRef<Error | undefined>>`
 - `refresh(): Promise<ChromeAIAvailability>`
+
+`options` and `autoCheck` may be reactive:
+
+```ts
+const language = ref("en");
+
+const availability = useChromeAIAvailability({
+  options: computed(() => ({
+    expectedInputs: [{ type: "text", languages: [language.value] }],
+    expectedOutputs: [{ type: "text", languages: [language.value] }],
+  })),
+});
+```
+
+When `autoCheck` is enabled, changing reactive availability options refreshes the check.
 
 ### `useChromeAIParams(autoLoad = true)`
 
@@ -61,6 +80,8 @@ Returns:
 - `createSession()`
 - `destroySession()`
 - `autoCreate`
+
+`createOptions`, `autoCreate`, `autoCheck`, and `destroyOnUnmount` may be reactive.
 
 ### `useChromeAIPrompt(options?)`
 
@@ -111,6 +132,8 @@ Returns:
 - `refresh()`
 - `resetOverflow()`
 
+`session` and the context options may be refs/computed values.
+
 ### Task composables
 
 - `useChromeAITaskAvailability({ apiName, options?, autoCheck? })`
@@ -124,3 +147,5 @@ Returns:
 - `useChromeAIProofreader(...)`
 
 Task API status and result states follow the same reactive pattern with refs.
+
+Task `createOptions` and `autoCreate` may also be reactive, so task language/options can follow Vue UI state without recreating the composable.

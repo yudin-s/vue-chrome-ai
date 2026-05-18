@@ -19,9 +19,10 @@ Good npm search terms are included in `package.json`: `vue`, `vue3`, `vue-plugin
 - `sideEffects: false` enables tree-shaking.
 - Vue is a peer dependency.
 - Package contents are controlled with `files`.
-- Docs and a copy-paste Vue SFC example are included.
+- Docs, recipes, agent guidance, and copy-paste Vue SFC examples are included.
 - `publishConfig.access` is `public` for the scoped package.
 - `publishConfig.provenance` is enabled.
+- CI runs typecheck, tests, build, audit, and dry-pack.
 - `prepublishOnly` runs typecheck, tests, build, audit, and dry-pack.
 
 ## Pre-Publish Checklist
@@ -34,12 +35,57 @@ npm run publish:check
 npm --cache ./.npm-cache pack --dry-run --json
 ```
 
-Manual first publish:
+Optional compatibility checks before the first public release:
+
+```bash
+npx publint
+npx @arethetypeswrong/cli --pack .
+```
+
+These checks require temporary network downloads unless added as dev dependencies.
+
+## Publishing Options
+
+### Recommended: Trusted Publishing From GitHub Actions
+
+Use npm trusted publishing when the GitHub repository is public and configured as a trusted publisher in npm.
+
+Benefits:
+
+- no long-lived npm token in GitHub secrets;
+- npm publishes provenance attestations automatically;
+- safer release audit trail.
+
+Suggested flow:
+
+1. Create the GitHub repository matching `package.json`.
+2. Publish the first package version manually if the package does not exist yet.
+3. Configure npm trusted publishing for the package and release workflow.
+4. Tag a release, for example `v0.1.0`.
+5. Let GitHub Actions publish to npmjs.com and GitHub Packages.
+
+Trusted publishing requires npm CLI `11.5.1` or later and Node `22.14.0` or later. The publish workflow uses Node `24`.
+
+Configure npm trusted publishing with:
+
+- Provider: GitHub Actions
+- Organization or user: `yudin-s`
+- Repository: `vue-chrome-ai`
+- Workflow filename: `publish.yml`
+- Environment: leave empty unless a GitHub deployment environment is added later
+
+When published through trusted publishing from this public GitHub repository, npm automatically generates provenance attestations. The workflow does not need `--provenance`.
+
+The same workflow also publishes the package to GitHub Packages using `GITHUB_TOKEN` and the `packages: write` permission. The GitHub Packages step sets `NPM_CONFIG_PROVENANCE=false` because GitHub Packages is authenticated with `GITHUB_TOKEN`, while npmjs.com provenance is handled by trusted publishing.
+
+### Manual First Publish
 
 ```bash
 npm login
 npm publish --access public --provenance
 ```
+
+Use npm 2FA for publish/settings changes.
 
 ## Suggested First Release
 
