@@ -24,4 +24,6 @@ import {
 
 Use `VueChromeAI` as a Vue plugin to provide default `createOptions`, `autoCheck`, and `autoCreate`. Use composables directly inside `setup()`, `<script setup>`, or Vue effect scopes. Returned state is exposed as refs/computed refs.
 
+Composable options can be plain values, refs, computed values, or getter functions where documented. Prefer this for reactive language, modality, task, or auto-create settings.
+
 The package does not bundle Gemini Nano, does not call Google cloud APIs, and does not polyfill unsupported browsers.

@@ -7,7 +7,7 @@ import {
   shallowRef,
   type ComputedRef,
   type InjectionKey,
-  type MaybeRef,
+  type MaybeRefOrGetter,
   toValue,
   watch,
   watchEffect,
@@ -64,6 +64,9 @@ export interface VueChromeAIResolvedOptions {
   autoCreate: boolean;
 }
 
+export type ChromeAIReactiveValue<T> = MaybeRefOrGetter<T>;
+export type ChromeAIReactivePartial<T> = MaybeRefOrGetter<Partial<T>>;
+
 export type ChromeAIAvailabilityHookStatus = "idle" | "checking" | "ready" | "unsupported" | "unavailable" | "error";
 
 export type ChromeAICoreSessionStatus = Exclude<ChromeAIModelStatus, "prompting" | "streaming">;
@@ -101,24 +104,28 @@ export const VueChromeAI = {
 };
 
 export function useChromeAIOptions(
-  overrides: Partial<VueChromeAIPluginOptions> = {}
+  overrides: {
+    createOptions?: ChromeAIReactivePartial<ChromeAICreateOptions>;
+    autoCheck?: ChromeAIReactiveValue<boolean>;
+    autoCreate?: ChromeAIReactiveValue<boolean>;
+  } = {}
 ): ComputedRef<VueChromeAIResolvedOptions> {
   const provided = hasInjectionContext()
     ? inject(chromeAIOptionsKey, DEFAULT_PLUGIN_OPTIONS)
     : DEFAULT_PLUGIN_OPTIONS;
   return computed(() => ({
-    autoCheck: overrides.autoCheck ?? provided.autoCheck,
-    autoCreate: overrides.autoCreate ?? provided.autoCreate,
+    autoCheck: toValue(overrides.autoCheck) ?? provided.autoCheck,
+    autoCreate: toValue(overrides.autoCreate) ?? provided.autoCreate,
     createOptions: {
       ...provided.createOptions,
-      ...(overrides.createOptions ?? {}),
+      ...(toValue(overrides.createOptions) ?? {}),
     },
   }));
 }
 
-interface UseChromeAIAvailabilityOptions {
-  options?: ChromeAIAvailabilityOptions;
-  autoCheck?: boolean;
+export interface UseChromeAIAvailabilityOptions {
+  options?: ChromeAIReactivePartial<ChromeAIAvailabilityOptions>;
+  autoCheck?: ChromeAIReactiveValue<boolean>;
 }
 
 export interface UseChromeAIAvailabilityResult {
@@ -135,10 +142,10 @@ export function useChromeAIAvailability({
   autoCheck,
 }: UseChromeAIAvailabilityOptions = {}): UseChromeAIAvailabilityResult {
   const plugin = useChromeAIOptions();
-  const resolvedAutoCheck = computed(() => autoCheck ?? plugin.value.autoCheck);
+  const resolvedAutoCheck = computed(() => toValue(autoCheck) ?? plugin.value.autoCheck);
   const resolvedOptions = computed(() => ({
     ...plugin.value.createOptions,
-    ...options,
+    ...(toValue(options) ?? {}),
   }));
 
   const status = ref<ChromeAIAvailabilityHookStatus>("idle");
@@ -162,8 +169,8 @@ export function useChromeAIAvailability({
   };
 
   watch(
-    resolvedAutoCheck,
-    (next) => {
+    [resolvedAutoCheck, resolvedOptions],
+    ([next]) => {
       if (next) {
         void refresh();
       }
@@ -188,7 +195,7 @@ export interface UseChromeAIParamsResult {
   refresh: () => Promise<Awaited<ReturnType<typeof readChromeAIParams>> | undefined>;
 }
 
-export function useChromeAIParams(autoLoad = true): UseChromeAIParamsResult {
+export function useChromeAIParams(autoLoad: ChromeAIReactiveValue<boolean> = true): UseChromeAIParamsResult {
   const plugin = useChromeAIOptions();
   const status = ref<"idle" | "loading" | "ready" | "unsupported" | "error">("idle");
   const params = ref<Awaited<ReturnType<typeof readChromeAIParams>>>();
@@ -211,13 +218,13 @@ export function useChromeAIParams(autoLoad = true): UseChromeAIParamsResult {
   };
 
   watch(
-    () => plugin.value.autoCheck && autoLoad,
+    () => plugin.value.autoCheck && toValue(autoLoad),
     (next) => {
       if (next) {
         void refresh();
       }
     },
-    { immediate: autoLoad }
+    { immediate: toValue(autoLoad) }
   );
 
   return {
@@ -229,10 +236,10 @@ export function useChromeAIParams(autoLoad = true): UseChromeAIParamsResult {
 }
 
 export interface UseChromeAISessionOptions {
-  createOptions?: ChromeAICreateOptions;
-  autoCreate?: boolean;
-  autoCheck?: boolean;
-  destroyOnUnmount?: boolean;
+  createOptions?: ChromeAIReactivePartial<ChromeAICreateOptions>;
+  autoCreate?: ChromeAIReactiveValue<boolean>;
+  autoCheck?: ChromeAIReactiveValue<boolean>;
+  destroyOnUnmount?: ChromeAIReactiveValue<boolean>;
 }
 
 export interface UseChromeAISessionResult {
@@ -256,11 +263,11 @@ export function useChromeAISession({
   destroyOnUnmount = true,
 }: UseChromeAISessionOptions = {}): UseChromeAISessionResult {
   const plugin = useChromeAIOptions();
-  const resolvedAutoCreate = computed(() => autoCreate ?? plugin.value.autoCreate);
-  const shouldAutoCreate = computed(() => (autoCheck ?? plugin.value.autoCheck) && resolvedAutoCreate.value);
+  const resolvedAutoCreate = computed(() => toValue(autoCreate) ?? plugin.value.autoCreate);
+  const shouldAutoCreate = computed(() => (toValue(autoCheck) ?? plugin.value.autoCheck) && resolvedAutoCreate.value);
   const resolvedCreateOptions = computed(() => ({
     ...plugin.value.createOptions,
-    ...createOptions,
+    ...(toValue(createOptions) ?? {}),
   }));
 
   const status = ref<ChromeAICoreSessionStatus>("idle");
@@ -327,7 +334,7 @@ export function useChromeAISession({
   );
 
   onScopeDispose(() => {
-    if (destroyOnUnmount) {
+    if (toValue(destroyOnUnmount)) {
       destroySession();
     }
   });
@@ -480,7 +487,7 @@ export interface UseChromeAIStreamResult {
 }
 
 export function useChromeAIStream(
-  session: MaybeRef<ChromeAILanguageModelSession | null>
+  session: ChromeAIReactiveValue<ChromeAILanguageModelSession | null>
 ): UseChromeAIStreamResult {
   const sessionRef = computed(() => toValue(session));
   const status = ref<ChromeAIStreamStatus>("idle");
@@ -498,7 +505,10 @@ export function useChromeAIStream(
   const streamPrompt = async (nextInput: ChromeAIPromptInput, options?: { signal?: AbortSignal }) => {
     const current = sessionRef.value;
     if (!current) {
-      throw new Error("Chrome AI session is not ready.");
+      const nextError = new Error("Chrome AI session is not ready.");
+      status.value = "error";
+      error.value = nextError;
+      throw nextError;
     }
 
     status.value = "streaming";
@@ -544,7 +554,7 @@ export interface UseChromeAIAppendResult {
 }
 
 export function useChromeAIAppend(
-  session: MaybeRef<ChromeAILanguageModelSession | null>
+  session: ChromeAIReactiveValue<ChromeAILanguageModelSession | null>
 ): UseChromeAIAppendResult {
   const sessionRef = computed(() => toValue(session));
   const status = ref<ChromeAIAppendStatus>("idle");
@@ -594,7 +604,7 @@ export interface UseChromeAICloneResult {
 }
 
 export function useChromeAIClone(
-  session: MaybeRef<ChromeAILanguageModelSession | null>
+  session: ChromeAIReactiveValue<ChromeAILanguageModelSession | null>
 ): UseChromeAICloneResult {
   const sessionRef = computed(() => toValue(session));
   const status = ref<ChromeAICloneStatus>("idle");
@@ -652,10 +662,11 @@ export interface UseChromeAIContextResult {
 }
 
 export function useChromeAIContext(
-  session: MaybeRef<ChromeAILanguageModelSession | null>,
-  options: { pollIntervalMs?: number } = {}
+  session: ChromeAIReactiveValue<ChromeAILanguageModelSession | null>,
+  options: ChromeAIReactiveValue<{ pollIntervalMs?: number }> = {}
 ): UseChromeAIContextResult {
   const sessionRef = computed(() => toValue(session));
+  const resolvedOptions = computed(() => toValue(options));
   const contextUsage = ref<number | undefined>(undefined);
   const contextWindow = ref<number | undefined>(undefined);
   const overflowed = ref(false);
@@ -683,7 +694,9 @@ export function useChromeAIContext(
 
   const setupInterval = (pollIntervalMs?: number) => {
     if (intervalId !== undefined) {
-      window.clearInterval(intervalId);
+      if (typeof window !== "undefined") {
+        window.clearInterval(intervalId);
+      }
       intervalId = undefined;
     }
     if (typeof pollIntervalMs === "number" && pollIntervalMs > 0 && typeof window !== "undefined") {
@@ -691,7 +704,7 @@ export function useChromeAIContext(
     }
   };
 
-  watch(() => options.pollIntervalMs, setupInterval, { immediate: true });
+  watch(() => resolvedOptions.value.pollIntervalMs, setupInterval, { immediate: true });
 
   onScopeDispose(() => {
     if (intervalId !== undefined) {
@@ -712,8 +725,8 @@ export function useChromeAIContext(
 
 export interface UseChromeAITaskAvailabilityOptions {
   apiName: ChromeAITaskAPIName;
-  options?: Record<string, unknown>;
-  autoCheck?: boolean;
+  options?: ChromeAIReactiveValue<Record<string, unknown>>;
+  autoCheck?: ChromeAIReactiveValue<boolean>;
 }
 
 export interface UseChromeAITaskAvailabilityResult {
@@ -734,12 +747,13 @@ export function useChromeAITaskAvailability({
   const status = ref<"idle" | "checking" | "ready" | "unavailable" | "error">("idle");
   const availability = ref<ChromeAIAvailability | undefined>(undefined);
   const error = ref<Error | undefined>(undefined);
+  const resolvedOptions = computed(() => toValue(options));
 
   const refresh = async () => {
     status.value = "checking";
     error.value = undefined;
     try {
-      const nextAvailability = await readChromeAITaskAvailability(apiName, options);
+      const nextAvailability = await readChromeAITaskAvailability(apiName, resolvedOptions.value);
       availability.value = nextAvailability;
       status.value = nextAvailability === "unavailable" ? "unavailable" : "ready";
       return nextAvailability;
@@ -752,13 +766,13 @@ export function useChromeAITaskAvailability({
   };
 
   watch(
-    () => autoCheck ?? true,
-    (next) => {
+    [() => toValue(autoCheck) ?? true, resolvedOptions],
+    ([next]) => {
       if (next) {
         void refresh();
       }
     },
-    { immediate: autoCheck ?? true }
+    { immediate: toValue(autoCheck) ?? true }
   );
 
   return {
@@ -774,9 +788,9 @@ export function useChromeAITaskAvailability({
 
 export interface UseChromeAITaskSessionOptions<TSession = ChromeAITaskSession> {
   apiName: ChromeAITaskAPIName;
-  createOptions?: ChromeAITaskCreateOptions;
-  autoCreate?: boolean;
-  destroyOnUnmount?: boolean;
+  createOptions?: ChromeAIReactiveValue<ChromeAITaskCreateOptions>;
+  autoCreate?: ChromeAIReactiveValue<boolean>;
+  destroyOnUnmount?: ChromeAIReactiveValue<boolean>;
   onSession?: (session: TSession) => void;
 }
 
@@ -809,7 +823,7 @@ export function useChromeAITaskSession<TSession = ChromeAITaskSession>({
     status.value = "checking";
     error.value = undefined;
     progress.value = undefined;
-    const merged = { ...createOptions, ...(overrideOptions ?? {}) };
+    const merged = { ...(toValue(createOptions) ?? {}), ...(overrideOptions ?? {}) };
     const nextAvailability = await readChromeAITaskAvailability(apiName, merged);
     availability.value = nextAvailability;
     status.value = nextAvailability === "available" ? "ready" : nextAvailability;
@@ -844,17 +858,17 @@ export function useChromeAITaskSession<TSession = ChromeAITaskSession>({
   };
 
   watch(
-    () => autoCreate,
+    () => toValue(autoCreate),
     (next) => {
       if (next) {
         void createSession();
       }
     },
-    { immediate: autoCreate }
+    { immediate: toValue(autoCreate) }
   );
 
   onScopeDispose(() => {
-    if (destroyOnUnmount) {
+    if (toValue(destroyOnUnmount)) {
       destroySession();
     }
   });
@@ -907,7 +921,7 @@ export function useChromeAITaskOperation<TResult = unknown, TSession = ChromeAIT
     error.value = undefined;
     text.value = "";
     chunks.value = [];
-    const activeSession = sessionHook.session.value ?? (await sessionHook.createSession(sessionOptions.createOptions));
+    const activeSession = sessionHook.session.value ?? (await sessionHook.createSession());
     const method = assertTaskMethod(activeSession, methodName) as (...args: unknown[]) => unknown;
 
     try {
@@ -1027,4 +1041,3 @@ export function useChromeAIProofreader(
     methodName: "proofread",
   });
 }
-
