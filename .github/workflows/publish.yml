@@ -34,7 +34,7 @@ jobs:
           registry-url: https://npm.pkg.github.com
           scope: "@yudin-s"
       - name: Publish to GitHub Packages
-        run: npm publish --registry=https://npm.pkg.github.com
+        run: npm publish --registry=https://npm.pkg.github.com --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ${{ github.token }}
           NPM_CONFIG_PROVENANCE: "false"
